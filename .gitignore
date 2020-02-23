@@ -1,7 +1,7 @@
 
 # Created by https://www.gitignore.io/api/python
 # Edit at https://www.gitignore.io/?templates=python
-
+main.py
 *.avi
 *.mp4
 files/*.dat

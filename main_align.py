@@ -2,9 +2,13 @@ import os
 import dlib
 import cv2 as cv
 import numpy as np
+from time import time
 
 base_dir = os.path.dirname(__file__)
 shape_predictor_file = os.path.join(base_dir, "files", "shape_predictor_5_face_landmarks.dat")
+aligned_photos = os.path.join(base_dir, "aligned_photos")
+if not os.path.isdir(aligned_photos):
+    os.mkdir(aligned_photos)
 
 face_detector = dlib.get_frontal_face_detector()
 shape_predictor = dlib.shape_predictor(shape_predictor_file)
@@ -18,7 +22,6 @@ COLOR = {
 
 
 def draw_rect(image, rect):
-    global x, y, w, h
     x, y = rect.tl_corner().x, rect.tl_corner().y
     w, h = rect.width(), rect.height()
     cv.rectangle(image, (x, y), (x + w, y + h), COLOR["green"], 2)
@@ -55,24 +58,17 @@ def align_img(image, center, angle):
     return cv.warpAffine(image, M, (width, height))
 
 
-def roi_ext(image):
-    return image[y: y + h, x: x + w]
-
-
 def main():
-    source = "/home/alpha/Downloads/Video/test_1.mkv"
+    source = 0
     cap = cv.VideoCapture(source)
     cv.namedWindow("window", cv.WINDOW_AUTOSIZE)
-    # to save video
-    fourcc = cv.VideoWriter_fourcc(*'XVID')
-    out = cv.VideoWriter('output.avi',fourcc, 15.0, (640 * 2,480))
 
     while True:
         ret, frame = cap.read()
         unaligned = np.copy(frame)
         if not ret:
             continue
-
+        # detecting 
         faces = face_detector(frame, 0)
         if len(faces) < 1:
             continue
@@ -80,24 +76,20 @@ def main():
         for face in faces:
             points = shape_predictor(frame, face)
             center, angle = get_angle(frame, points, type=5)
-
             warped_img = align_img(unaligned, center, angle)
             faces_w = face_detector(warped_img, 0)
-            
-            for face in faces_w:
-                points = shape_predictor(warped_img, face)
+            for face_w in faces_w:
+                points = shape_predictor(warped_img, face_w)
                 center, angle = get_angle(warped_img, points, type=5)
-            
-            stacked = np.hstack((warped_img, frame))
-            try:
-                out.write(stacked)
-                cv.imshow("window", stacked)
-            except cv.error:
-                raise "No Face"
+
+        try:
+            cv.imshow("window", warped_img)
+        except cv.error:
+            raise "no face"
 
         if cv.waitKey(10) & 0xff == 27:
             break
-
+    cap.release()
     cv.destroyAllWindows()
 
 if __name__ == "__main__":
